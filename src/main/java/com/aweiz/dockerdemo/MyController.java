@@ -12,7 +12,6 @@ public class MyController {
 
     @GetMapping("/hi")
     public String home() {
-        System.out.println(service.getSomething());
         return "I got: " + UserContext.getUserContext().getUserHeader();
     }
 

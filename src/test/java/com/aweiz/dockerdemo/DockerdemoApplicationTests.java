@@ -16,12 +16,14 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
@@ -30,46 +32,52 @@ import static org.mockito.BDDMockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 //
-//@RunWith(SpringRunner.class)
-//@WebMvcTest(MyController.class)
+@RunWith(SpringRunner.class)
+@WebMvcTest(MyController.class)
 public class DockerdemoApplicationTests {
 	static Random r = new Random();
 	@Autowired
 	private MockMvc mvc;
 	//
-	public static void main(String[] areg) {
-		ExecutorService es = Executors.newFixedThreadPool(50);
-		RestTemplate rt = new RestTemplate();
-
-
-		Runnable r =()->{
-			HttpHeaders headers = new HttpHeaders();
-			String h = getRandomHeader();
-			headers.add("myHeader",h);
-			HttpEntity entity = new HttpEntity(headers);
-			String s = rt.exchange("http://localhost:8080/hi",HttpMethod.GET, entity, String.class).getBody();
-			System.out.println(h+"..."+s);
-		};
-		IntStream.range(0,20).forEach(value -> es.submit(r));
-		es.shutdown();
-	}
-
-	//@Test
-//	public void test1() throws Exception {
+//	public static void main(String[] areg) {
 //		ExecutorService es = Executors.newFixedThreadPool(50);
+//		RestTemplate rt = new RestTemplate();
+//
 //
 //		Runnable r =()->{
-//			try {
-//				String h = getRandomHeader();
-//				mvc.perform(get("/hi").header("myHeader",h)
-//                        .contentType(MediaType.APPLICATION_JSON))
-//                        .andExpect(status().isOk());
-//			} catch (Exception e) {
-//				e.printStackTrace();
-//			}
+//			HttpHeaders headers = new HttpHeaders();
+//			String h = getRandomHeader();
+//			headers.add("myHeader",h);
+//			HttpEntity entity = new HttpEntity(headers);
+//			String s = rt.exchange("http://localhost:8080/hi",HttpMethod.GET, entity, String.class).getBody();
+//			System.out.println(h+"..."+s);
 //		};
 //		IntStream.range(0,20).forEach(value -> es.submit(r));
+//		es.shutdown();
 //	}
+
+	@Test
+	public void test1() throws Exception {
+		CountDownLatch cdl = new CountDownLatch(20);
+		ExecutorService es = Executors.newFixedThreadPool(50);
+
+		Runnable r =()->{
+			try {
+				String h = getRandomHeader();
+				MvcResult result = mvc.perform(get("/hi").header("myHeader",h)
+                        .contentType(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isOk()).andReturn();
+				System.out.println(h+"..."+result.getResponse().getContentAsString());
+				cdl.countDown();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		};
+		IntStream.range(0,20).forEach(value -> es.submit(r));
+		cdl.await();
+//		Thread.sleep(10000); // stupid
+
+	}
 
 	private static String getRandomHeader() {
 		int b = r.nextInt();
